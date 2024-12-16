@@ -58,20 +58,22 @@ def search_suggestions():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/download_url', methods=['POST'])
+@app.route('/download_url', methods=['GET'])
 def download_url():
-    data = request.json
-    video_url = data.get('url')
+    video_id = request.args.get('videoId')
 
-    if not video_url:
-        return jsonify({"error": "URL is required"}), 400
+    if not video_id:
+        return jsonify({"error": "videoId parameter is required"}), 400
 
+    video_url = f'https://www.youtube.com/watch?v={video_id}'
+    
     res = get_download_url(video_url)
 
     if "error" in res:
         return jsonify(res), 500
     else:
         return jsonify(res), 200
+
 
 @app.route('/get_artist', methods=['GET'])
 def get_artist():
