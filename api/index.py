@@ -4,7 +4,7 @@ from ytmusicapi import YTMusic
 import yt_dlp
 
 app = Flask(__name__)
-
+CORS(app)
 # Initialize YTMusic API
 ytmusic = YTMusic()
 
