@@ -1,5 +1,6 @@
 import socket
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 from ytmusicapi import YTMusic
 import yt_dlp
 
