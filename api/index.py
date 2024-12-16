@@ -14,6 +14,7 @@ def get_stream_url(url):
         ydl_opts = {
             'format': 'bestaudio/best',  # Download only the best audio available
             'noplaylist': True,  # Only fetch a single video, not playlists
+            'cookies': 'cookies.txt',  # Path to your cookies.txt file
             'quiet': True,  # Suppress output to make it faster
             'extractaudio': True,  # Only extract audio, no video
             'audioquality': 1,  # Highest audio quality
