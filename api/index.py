@@ -9,22 +9,23 @@ CORS(app)
 # Initialize YTMusic API
 ytmusic = YTMusic()
 
-def get_download_url(url):
+def get_stream_url(url):
     try:
         ydl_opts = {
             'format': 'bestaudio/best',  # Download only the best audio available
-            'noplaylist': True, #true
+            'noplaylist': True,  # Only fetch a single video, not playlists
             'quiet': True,  # Suppress output to make it faster
-            'extractaudio': True,  # Only extract audio
+            'extractaudio': True,  # Only extract audio, no video
             'audioquality': 1,  # Highest audio quality
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            audio_url = info['url']
+            # Extract the streamable URL (audio)
+            stream_url = info['url']
             return {
                 "title": info.get('title'),
-                "download_url": audio_url
+                "stream_url": stream_url
             }
     except Exception as e:
         return {"error": str(e)}
@@ -33,7 +34,6 @@ def get_download_url(url):
 @app.route('/health', methods=['GET'])
 def health_check():
     try:
-        # You can also add checks for database, third-party APIs, etc.
         return jsonify({"status": "success", "message": "The API is up and running!"}), 200
     except Exception as e:
         return jsonify({"status": "fail", "message": f"Health check failed: {str(e)}"}), 503
@@ -68,13 +68,12 @@ def download_url():
 
     video_url = f'https://www.youtube.com/watch?v={video_id}'
     
-    res = get_download_url(video_url)
+    res = get_stream_url(video_url)
 
     if "error" in res:
         return jsonify(res), 500
     else:
         return jsonify(res), 200
-
 
 @app.route('/get_artist', methods=['GET'])
 def get_artist():
