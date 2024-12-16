@@ -1,0 +1,19 @@
+# Netscape HTTP Cookie File
+# This is a generated file! Do not edit.
+
+.domain.com   TRUE    /    1762421428    LOGIN_INFO    AFmmF2swRQIhANy7XQ_niXhpIuxYEerKKO84LXn4sX_HwT9RfLoX494AAiBQBcD4axq_Ul2UCgbRiiFPffdRlWF9la3OITOBD0uiCQ:QUQ3MjNmd2NYWXJIeDNBTmNFZUxSSWtZR3dkaTJGVVN0UW5IbWxIOW5RMGRTN2JlNGR0S21DVGdVd2lPM0QzT0pQZTdCWWhrd3ZaaDRzRDd6ZEhyelFta1V3SzhXMUdHWTVwZE4tVGg2Qm5jRGM1b2ZLZ0FDRzlvbWl6aWhPM0Q1dktKcG9LR25aVUFRdzlNTHRuSG50QWZlejJ1andLZmJR
+.domain.com   TRUE    /    1768753466    HSID    AIajAszhd75vkK95i
+.domain.com   TRUE    /    1768753466    SSID    AQFTeGhvemPJIXJFg
+.domain.com   TRUE    /    1768753466    APISID    37QRA-JfxC45Upi4/AcE26FTOcfkn2Vsfv
+.domain.com   TRUE    /    1768753466    SAPISID    kG43TEGYufQQV6BM/AvDsRwDpcMmTY6SFE
+.domain.com   TRUE    /    1768753466    __Secure-1PAPISID    kG43TEGYufQQV6BM/AvDsRwDpcMmTY6SFE
+.domain.com   TRUE    /    1768753466    __Secure-3PAPISID    kG43TEGYufQQV6BM/AvDsRwDpcMmTY6SFE
+.domain.com   TRUE    /    1768753466    SID    g.a000rQibbNxC1Q4EWtChpW-jP4BbGqFj0BjPW72lhGwjwe3eLSqiJmLkgb9BxuongNj7yVb1wAACgYKAeoSARASFQHGX2Mi2n9UQ829sNgRfLG9oRqsuxoVAUF8yKpJqXyNKr7LHChtU2W4SRAr0076
+.domain.com   TRUE    /    1768753466    __Secure-1PSID    g.a000rQibbNxC1Q4EWtChpW-jP4BbGqFj0BjPW72lhGwjwe3eLSqiLWCtDoZw9UglSwm9uAvWegACgYKATUSARASFQHGX2MitE6yHAVZdvk2f-ubHmE9lRoVAUF8yKqAYyZ-t_vfNsoe-aKwydKg0076
+.domain.com   TRUE    /    1768753466    __Secure-3PSID    g.a000rQibbNxC1Q4EWtChpW-jP4BbGqFj0BjPW72lhGwjwe3eLSqiQpLk98xixmgP_W-l5SEvHQACgYKAaISARASFQHGX2MiYGLjhCzZYjd0RYLXVFQ6SRoVAUF8yKpzvkBgtsuENMTrGeRJ1Fg-0076
+.domain.com   TRUE    /    1768937592    PREF    f4=4000000&tz=Asia.Calcutta&f6=40000000&f7=100&f5=30000
+.domain.com   TRUE    /    1765913254    __Secure-1PSIDTS    sidts-CjIB7wV3sTC9NpHwCG-3grnDm04IbUSWuRoiV3zE3RGF8J_7tufdxZCLs8CT0o5OPeA3dBAA
+.domain.com   TRUE    /    1765913254    __Secure-3PSIDTS    sidts-CjIB7wV3sTC9NpHwCG-3grnDm04IbUSWuRoiV3zE3RGF8J_7tufdxZCLs8CT0o5OPeA3dBAA
+.domain.com   TRUE    /    1765913591    __Secure-1PSIDCC    AKEyXzXhQGPj_juCmyIXMyyMF6sihySTDRgjTs7nnTqm_m7NN96Cjugs0pE5gmTOAlNwniY15Q
+.domain.com   TRUE    /    1765913591    __Secure-3PSIDCC    AKEyXzUdcXvVHlP8sWK3Pf_izZoEUlDFrMoATMtny89aw9-WbtI_WFu9AzqrLux2S3Q0AMbmxA
+.domain.com   TRUE    /    1765913591    SIDCC    AKEyXzW-R7-Jos7DtYNWXUkUftQvF2X-mCQXx9c6T8V_9wfLBjJ6cNwZas1vVNxLnpih-cW176Y
