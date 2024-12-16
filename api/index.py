@@ -12,7 +12,7 @@ def get_download_url(url):
     try:
         ydl_opts = {
             'format': 'bestaudio/best',  # Download only the best audio available
-            'noplaylist': True,
+            'noplaylist': True, #true
             'quiet': True,  # Suppress output to make it faster
             'extractaudio': True,  # Only extract audio
             'audioquality': 1,  # Highest audio quality
