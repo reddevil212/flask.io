@@ -39,7 +39,7 @@ def get_download_url(url, cookies_file):
 def download_url():
     """Handle the request to get the audio download URL."""
     url = request.form.get('url')
-    
+
     # Fetch the cookies file URL from the environment variable or use a static URL
     cookies_url = os.getenv('COOKIES_URL', 'https://ki0dyxketspblp5x.public.blob.vercel-storage.com/cookies-9Sc6jE0VEn9Hk1Cn2lq2u1v7cU2lDf.txt')
 
@@ -51,24 +51,31 @@ def download_url():
 
     # Fetch the cookies file from the URL
     try:
-        response = requests.get(cookies_url)  # Make sure the requests library is used
+        response = requests.get(cookies_url)  # Fetch the cookies file
         response.raise_for_status()  # Will raise an error for bad status codes
         cookies_data = response.text
     except requests.RequestException as e:
         return jsonify({"error": f"Failed to fetch cookies file: {str(e)}"}), 500
 
-    # Save the cookies data to a file locally
-    cookies_file_path = os.path.join(os.getcwd(), 'cookies.txt')
-    with open(cookies_file_path, 'w') as f:
-        f.write(cookies_data)
+    # Create a temporary file for cookies data
+    try:
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            cookies_file_path = temp_file.name  # Get the path to the temporary file
+            temp_file.write(cookies_data.encode())  # Write cookies data to the temp file
 
-    # Call the function to get the download URL (assuming `get_download_url` is defined)
-    res = get_download_url(url, cookies_file_path)
+        # Call the function to get the download URL
+        res = get_download_url(url, cookies_file_path)
 
-    if "error" in res:
-        return jsonify(res), 500
-    else:
-        return jsonify(res), 200
+        # Clean up: Remove the temporary file after use
+        os.remove(cookies_file_path)
+
+        if "error" in res:
+            return jsonify(res), 500
+        else:
+            return jsonify(res), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to handle cookies file: {str(e)}"}), 500
+
 
 # Health check endpoint
 @app.route('/', methods=['GET'])
