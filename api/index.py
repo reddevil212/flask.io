@@ -3,8 +3,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from ytmusicapi import YTMusic
 import yt_dlp
-import base64
-import os
+
 
 app = Flask(__name__)
 CORS(app)
@@ -13,41 +12,35 @@ ytmusic = YTMusic()
 
 def get_download_url(url):
     try:
-        # Retrieve the base64 encoded cookies from the environment variable
-        cookies_base64 = os.getenv('YT_COOKIES')
-        
-        if not cookies_base64:
-            raise Exception("Base64 encoded cookies are not found in environment variable.")
-
-        # Decode the base64 string to get the raw cookies
-        cookies_string = base64.b64decode(cookies_base64).decode('utf-8')
-
-        # Write the cookies to a temporary cookies.txt file
-        cookies_file_path = '/tmp/cookies.txt'  # You can adjust this path as needed
-        with open(cookies_file_path, 'w') as f:
-            f.write(cookies_string)
-
-        # Set yt-dlp options to use the cookies.txt file
         ydl_opts = {
-            'format': 'bestaudio/best',  # Only download the best audio available
-            'noplaylist': True,          # Don't process playlists
-            'cookiefile': cookies_file_path,  # Use the temporary cookies file
+            'format': 'bestaudio/best',  # Download only the best audio available
+            'noplaylist': True
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)  # Extract metadata without downloading
-            audio_url = info.get('url')  # Get the audio URL
-
-            if not audio_url:
-                raise Exception("No audio URL found.")
-            
+            info = ydl.extract_info(url, download=False)
+            audio_url = info['url']
             return {
                 "title": info.get('title'),
                 "download_url": audio_url
             }
-
     except Exception as e:
         return {"error": str(e)}
+
+@app.route('/download_url', methods=['POST'])
+def download_url():
+    data = request.json
+    video_url = data.get('url')
+
+    if not video_url:
+        return jsonify({"error": "URL is required"}), 400
+
+    res = get_download_url(video_url)
+
+    if "error" in res:
+        return jsonify(res), 500
+    else:
+        return jsonify(res), 200
 # Health check endpoint
 @app.route('/', methods=['GET'])
 def health_check():
@@ -77,24 +70,6 @@ def search_suggestions():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/download_url', methods=['POST'])
-def download_url():
-    """Handle the request to get the audio download URL."""
-    data = request.json
-    video_url = data.get('url')  # Get the YouTube URL from the POST body
-
-    if not video_url:
-        return jsonify({"error": "URL is required"}), 400  # Return error if URL is not provided
-
-    # Call the function to get the download URL
-    res = get_download_url(video_url)
-
-    # If there's an error, return it with a 500 status code
-    if "error" in res:
-        return jsonify(res), 500
-    else:
-        # Otherwise, return the title and download URL in the response
-        return jsonify(res), 200
 
 @app.route('/get_artist', methods=['GET'])
 def get_artist():
