@@ -3,6 +3,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from ytmusicapi import YTMusic
 import yt_dlp
+import base64
 import os
 
 app = Flask(__name__)
@@ -11,34 +12,42 @@ CORS(app)
 ytmusic = YTMusic()
 
 def get_download_url(url):
-    """Extract the best audio download URL from the YouTube video URL."""
     try:
-        # Path to your cookies.txt file (assuming it's in the same directory as app.py)
-        cookies_file_path = os.path.join(os.path.dirname(__file__), 'cookies.txt')
+        # Retrieve the base64 encoded cookies from the environment variable
+        cookies_base64 = os.getenv('YT_COOKIES')
+        
+        if not cookies_base64:
+            raise Exception("Base64 encoded cookies are not found in environment variable.")
 
-        # yt-dlp options to get only the best audio format available and pass cookies
+        # Decode the base64 string to get the raw cookies
+        cookies_string = base64.b64decode(cookies_base64).decode('utf-8')
+
+        # Write the cookies to a temporary cookies.txt file
+        cookies_file_path = '/tmp/cookies.txt'  # You can adjust this path as needed
+        with open(cookies_file_path, 'w') as f:
+            f.write(cookies_string)
+
+        # Set yt-dlp options to use the cookies.txt file
         ydl_opts = {
             'format': 'bestaudio/best',  # Only download the best audio available
             'noplaylist': True,          # Don't process playlists
-            'cookiefile': cookies_file_path,  # Add the cookie file option
+            'cookiefile': cookies_file_path,  # Use the temporary cookies file
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)  # Extract metadata without downloading
             audio_url = info.get('url')  # Get the audio URL
 
-            # Check if we got a valid URL
             if not audio_url:
                 raise Exception("No audio URL found.")
-
-            # Return the title and download URL
+            
             return {
                 "title": info.get('title'),
                 "download_url": audio_url
             }
 
     except Exception as e:
-        return {"error": str(e)}  # Return the error if something goes wrong
+        return {"error": str(e)}
 # Health check endpoint
 @app.route('/', methods=['GET'])
 def health_check():
