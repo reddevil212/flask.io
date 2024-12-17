@@ -10,16 +10,23 @@ CORS(app)
 # Initialize YTMusic API
 ytmusic = YTMusic()
 
-def get_download_url(url):
+def get_download_url(url, cookies_file):
+    """Extract the best audio download URL from the YouTube video URL with cookies."""
     try:
+        # yt-dlp options to get only the best audio format available
         ydl_opts = {
-            'format': 'bestaudio/best',  # Download only the best audio available
-            'noplaylist': True
+            'format': 'bestaudio/best',
+            'noplaylist': True,
+            'cookiefile': cookies_file  # Use the cookies file for authentication
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            audio_url = info['url']
+            audio_url = info.get('url')
+
+            if not audio_url:
+                raise Exception("No audio URL found.")
+
             return {
                 "title": info.get('title'),
                 "download_url": audio_url
@@ -29,13 +36,24 @@ def get_download_url(url):
 
 @app.route('/download_url', methods=['POST'])
 def download_url():
-    data = request.json
-    video_url = data.get('url')
+    """Handle the request to get the audio download URL."""
+    url = request.form.get('url')
+    cookies_file = request.files.get('cookies')
 
-    if not video_url:
+    if not url:
         return jsonify({"error": "URL is required"}), 400
 
-    res = get_download_url(video_url)
+    if not cookies_file:
+        return jsonify({"error": "Cookies file is required"}), 400
+
+    # Use the current working directory to save the file
+    cookies_file_path = os.path.join(os.getcwd(), 'cookies.txt')
+
+    # Save the cookies file to the current working directory
+    cookies_file.save(cookies_file_path)
+
+    # Call the function to get the download URL
+    res = get_download_url(url, cookies_file_path)
 
     if "error" in res:
         return jsonify(res), 500
