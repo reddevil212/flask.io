@@ -39,21 +39,30 @@ def get_download_url(url, cookies_file):
 def download_url():
     """Handle the request to get the audio download URL."""
     url = request.form.get('url')
-    cookies_file = request.files.get('cookies')
+    
+    # Fetch the cookies file URL from the environment variable or use a static URL
+    cookies_url = os.getenv('COOKIES_URL', 'https://ki0dyxketspblp5x.public.blob.vercel-storage.com/cookies-9Sc6jE0VEn9Hk1Cn2lq2u1v7cU2lDf.txt')
 
     if not url:
         return jsonify({"error": "URL is required"}), 400
 
-    if not cookies_file:
-        return jsonify({"error": "Cookies file is required"}), 400
+    if not cookies_url:
+        return jsonify({"error": "Cookies file URL is required from the environment variable"}), 400
 
-    # Use the current working directory to save the file
+    # Fetch the cookies file from the URL
+    try:
+        response = requests.get(cookies_url)
+        response.raise_for_status()  # Will raise an error for bad status codes
+        cookies_data = response.text
+    except requests.RequestException as e:
+        return jsonify({"error": f"Failed to fetch cookies file: {str(e)}"}), 500
+
+    # Save the cookies data to a file locally
     cookies_file_path = os.path.join(os.getcwd(), 'cookies.txt')
+    with open(cookies_file_path, 'w') as f:
+        f.write(cookies_data)
 
-    # Save the cookies file to the current working directory
-    cookies_file.save(cookies_file_path)
-
-    # Call the function to get the download URL
+    # Call the function to get the download URL (assuming `get_download_url` is defined)
     res = get_download_url(url, cookies_file_path)
 
     if "error" in res:
