@@ -12,71 +12,62 @@ CORS(app)
 # Initialize YTMusic API
 ytmusic = YTMusic()
 
-def get_download_url(url, cookies_file):
-    """Extract the best audio download URL from the YouTube video URL with cookies."""
+# Function to validate if the URL is a valid YouTube URL
+def is_valid_youtube_url(url):
+    youtube_regex = (
+        r'(https?://)?(www\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/'
+        r'(watch\?v=|embed/|v/|.+/videoseries\?v=)[a-zA-Z0-9_-]{11}')
+    return re.match(youtube_regex, url) is not None
+
+# A helper function to get the best stream URL
+def get_best_stream_url(video_url):
     try:
-        # yt-dlp options to get only the best audio format available
+        # Setup yt-dlp options
         ydl_opts = {
-            'format': 'bestaudio/best',
-            'noplaylist': True,
-            'cookiefile': cookies_file  # Use the cookies file for authentication
+            'format': 'bestaudio/best',  # Choose the best audio or video stream
+            'quiet': True,  # Suppress unnecessary output
+            'extractor_args': {
+                'youtube': {
+                    'noplaylist': True  # Disable playlist extraction
+                }
+            }
         }
 
+        # Use yt-dlp to extract video info
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            audio_url = info.get('url')
+            info_dict = ydl.extract_info(video_url, download=False)
 
-            if not audio_url:
-                raise Exception("No audio URL found.")
+            if 'formats' not in info_dict or not info_dict['formats']:
+                raise ValueError("No formats found for this video.")
 
-            return {
-                "title": info.get('title'),
-                "download_url": audio_url
-            }
+            # Get the URL of the best stream
+            for format in info_dict['formats']:
+                if format.get('acodec') != 'none' and format.get('url'):
+                    return format['url']
+
+            raise ValueError("No suitable stream found for this video.")
+
     except Exception as e:
-        return {"error": str(e)}
+        return str(e)
 
-@app.route('/download_url', methods=['POST'])
-def download_url():
-    """Handle the request to get the audio download URL."""
-    url = request.form.get('url')
+@app.route('/get_stream_url', methods=['GET'])
+def get_stream_url():
+    video_url = request.args.get('url')
+    
+    if not video_url:
+        return jsonify({'error': 'No video URL provided'}), 400
 
-    # Fetch the cookies file URL from the environment variable or use a static URL
-    cookies_url = os.getenv('COOKIES_URL', 'https://ki0dyxketspblp5x.public.blob.vercel-storage.com/cookies-9Sc6jE0VEn9Hk1Cn2lq2u1v7cU2lDf.txt')
+    # Validate the YouTube URL
+    if not is_valid_youtube_url(video_url):
+        return jsonify({'error': 'Invalid YouTube URL'}), 400
 
-    if not url:
-        return jsonify({"error": "URL is required"}), 400
+    # Get the best stream URL for the video
+    stream_url = get_best_stream_url(video_url)
+    
+    if "http" not in stream_url:
+        return jsonify({'error': stream_url}), 400  # Error message from yt-dlp
 
-    if not cookies_url:
-        return jsonify({"error": "Cookies file URL is required from the environment variable"}), 400
-
-    # Fetch the cookies file from the URL
-    try:
-        response = requests.get(cookies_url)  # Fetch the cookies file
-        response.raise_for_status()  # Will raise an error for bad status codes
-        cookies_data = response.text
-    except requests.RequestException as e:
-        return jsonify({"error": f"Failed to fetch cookies file: {str(e)}"}), 500
-
-    # Create a temporary file for cookies data
-    try:
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            cookies_file_path = temp_file.name  # Get the path to the temporary file
-            temp_file.write(cookies_data.encode())  # Write cookies data to the temp file
-
-        # Call the function to get the download URL
-        res = get_download_url(url, cookies_file_path)
-
-        # Clean up: Remove the temporary file after use
-        os.remove(cookies_file_path)
-
-        if "error" in res:
-            return jsonify(res), 500
-        else:
-            return jsonify(res), 200
-    except Exception as e:
-        return jsonify({"error": f"Failed to handle cookies file: {str(e)}"}), 500
-
+    return jsonify({'stream_url': stream_url})
 
 # Health check endpoint
 @app.route('/', methods=['GET'])
