@@ -42,7 +42,7 @@ def download_url():
     url = request.form.get('url')
 
     # Fetch the cookies file URL from the environment variable or use a static URL
-    cookies_url = os.getenv('COOKIES_URL')
+    cookies_url = os.getenv('COOKIES_URL', 'https://ki0dyxketspblp5x.public.blob.vercel-storage.com/cookies-9Sc6jE0VEn9Hk1Cn2lq2u1v7cU2lDf.txt')
 
     if not url:
         return jsonify({"error": "URL is required"}), 400
