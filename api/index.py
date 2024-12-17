@@ -12,10 +12,14 @@ ytmusic = YTMusic()
 def get_download_url(url):
     """Extract the best audio download URL from the YouTube video URL."""
     try:
-        # yt-dlp options to get only the best audio format available
+        # Path to your cookies.txt file (assuming it's in the same directory as app.py)
+        cookies_file_path = os.path.join(os.path.dirname(__file__), 'cookies.txt')
+
+        # yt-dlp options to get only the best audio format available and pass cookies
         ydl_opts = {
             'format': 'bestaudio/best',  # Only download the best audio available
             'noplaylist': True,          # Don't process playlists
+            'cookiefile': cookies_file_path,  # Add the cookie file option
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
