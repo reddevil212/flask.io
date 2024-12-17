@@ -1,10 +1,10 @@
-import socket
+import os
+import requests  # <-- Add this import statement for the requests library
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from ytmusicapi import YTMusic
 import yt_dlp
-import os
-
+import socket
 
 app = Flask(__name__)
 CORS(app)
@@ -51,7 +51,7 @@ def download_url():
 
     # Fetch the cookies file from the URL
     try:
-        response = requests.get(cookies_url)
+        response = requests.get(cookies_url)  # Make sure the requests library is used
         response.raise_for_status()  # Will raise an error for bad status codes
         cookies_data = response.text
     except requests.RequestException as e:
@@ -69,6 +69,7 @@ def download_url():
         return jsonify(res), 500
     else:
         return jsonify(res), 200
+
 # Health check endpoint
 @app.route('/', methods=['GET'])
 def health_check():
