@@ -9,30 +9,33 @@ CORS(app)
 # Initialize YTMusic API
 ytmusic = YTMusic()
 
-def get_stream_url(url):
+def get_download_url(url):
+    """Extract the best audio download URL from the YouTube video URL."""
     try:
+        # yt-dlp options to get only the best audio format available
         ydl_opts = {
-            'format': 'bestaudio/best',  # Download only the best audio available
-            'noplaylist': True,  # Only fetch a single video, not playlists
-            'cookies': 'cookies.txt',  # Path to your cookies.txt file
-            'quiet': True,  # Suppress output to make it faster
-            'extractaudio': True,  # Only extract audio, no video
-            'audioquality': 1,  # Highest audio quality
+            'format': 'bestaudio/best',  # Only download the best audio available
+            'noplaylist': True,          # Don't process playlists
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            # Extract the streamable URL (audio)
-            stream_url = info['url']
+            info = ydl.extract_info(url, download=False)  # Extract metadata without downloading
+            audio_url = info.get('url')  # Get the audio URL
+
+            # Check if we got a valid URL
+            if not audio_url:
+                raise Exception("No audio URL found.")
+
+            # Return the title and download URL
             return {
                 "title": info.get('title'),
-                "stream_url": stream_url
+                "download_url": audio_url
             }
-    except Exception as e:
-        return {"error": str(e)}
 
+    except Exception as e:
+        return {"error": str(e)}  # Return the error if something goes wrong
 # Health check endpoint
-@app.route('/health', methods=['GET'])
+@app.route('/', methods=['GET'])
 def health_check():
     try:
         return jsonify({"status": "success", "message": "The API is up and running!"}), 200
@@ -60,20 +63,23 @@ def search_suggestions():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/download_url', methods=['GET'])
+@app.route('/download_url', methods=['POST'])
 def download_url():
-    video_id = request.args.get('videoId')
+    """Handle the request to get the audio download URL."""
+    data = request.json
+    video_url = data.get('url')  # Get the YouTube URL from the POST body
 
-    if not video_id:
-        return jsonify({"error": "videoId parameter is required"}), 400
+    if not video_url:
+        return jsonify({"error": "URL is required"}), 400  # Return error if URL is not provided
 
-    video_url = f'https://www.youtube.com/watch?v={video_id}'
-    
-    res = get_stream_url(video_url)
+    # Call the function to get the download URL
+    res = get_download_url(video_url)
 
+    # If there's an error, return it with a 500 status code
     if "error" in res:
         return jsonify(res), 500
     else:
+        # Otherwise, return the title and download URL in the response
         return jsonify(res), 200
 
 @app.route('/get_artist', methods=['GET'])
