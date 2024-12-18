@@ -1,11 +1,15 @@
-import os
 import yt_dlp
-from flask import Flask, jsonify, request
-from werkzeug.utils import secure_filename
+from flask import Flask, request, jsonify
 import tempfile
+import os
 import requests
+from werkzeug.utils import secure_filename
+import ytmusicapi  # Importing ytmusicapi
 
 app = Flask(__name__)
+
+# Initialize the YTMusic API client
+ytmusic = YTMusic()  # Assuming 'headers_auth.json' is available
 
 # Temporary directory for storing uploaded files
 TEMP_DIR = tempfile.mkdtemp()
@@ -107,8 +111,7 @@ def search():
         return jsonify({'error': str(e)}), 500
 
 
-
-# Add missing endpoints
+# Add missing endpoints for search suggestions, artist and album info
 @app.route('/search_suggestions', methods=['GET'])
 def search_suggestions():
     query = request.args.get('query')
@@ -221,9 +224,6 @@ def get_lyrics():
         return jsonify({'lyrics': lyrics})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-
-
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
