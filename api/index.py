@@ -18,46 +18,53 @@ TEMP_DIR = tempfile.mkdtemp()
 def download_cookies_from_url(url, download_path):
     try:
         # Download the cookies file from the URL
+        print(f"[DEBUG] Downloading cookies from: {url}")
         response = requests.get(url)
         response.raise_for_status()  # Raise an error for bad responses
         with open(download_path, 'wb') as f:
             f.write(response.content)
+        print(f"[DEBUG] Cookies saved to: {download_path}")
         return download_path
     except requests.exceptions.RequestException as e:
+        print(f"[ERROR] Failed to download cookies: {str(e)}")
         return {"error": f"Failed to download cookies from URL: {str(e)}"}
 
 # Function to extract M3U8 URL or the best available stream URL
 def get_stream_url(yt_url, cookies_file_path=None):
     ydl_opts = {
-        'format': 'bestaudio/best',  # Choose the best format (video or audio)
-        'noplaylist': False,  # Disable playlist downloads
-        'quiet': True,  # Suppress output to keep it clean
-        'forcejson': True  # Get metadata in JSON format
+        'format': 'bestaudio/best',
+        'noplaylist': False,
+        'quiet': True,  # Disable output
+        'forcejson': True,  # Get metadata in JSON format
     }
 
     if cookies_file_path:
         ydl_opts['cookiefile'] = cookies_file_path  # Use cookies if provided
 
     try:
+        print(f"[DEBUG] Extracting stream URL for: {yt_url}")
+        if cookies_file_path:
+            print(f"[DEBUG] Using cookies from: {cookies_file_path}")
+        else:
+            print("[DEBUG] No cookies provided.")
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            print("[DEBUG] Calling yt-dlp to extract info...")
             info_dict = ydl.extract_info(yt_url, download=False)
 
-            # Debugging: print the available formats
-            print("Available formats:", info_dict.get('formats', 'No formats found'))
+            print(f"[DEBUG] Extracted info: {info_dict}")
 
-            # Check if 'formats' key exists in the response
             if 'formats' in info_dict:
-                # Iterate over the available formats
                 for format in info_dict['formats']:
-                    # Debugging: print format details
-                    print("Format:", format)
-
-                    # If 'url' is an M3U8 playlist (HLS), return it
+                    print(f"[DEBUG] Available format: {format}")
                     if format.get('format_id') and 'm3u8' in format.get('url', ''):
+                        print(f"[DEBUG] Found M3U8 stream URL: {format['url']}")
                         return format['url']
 
-            return None  # Return None if no M3U8 URL is found
+            print("[DEBUG] No M3U8 stream URL found.")
+            return None
     except Exception as e:
+        print(f"[ERROR] Failed to get stream URL: {e}")
         return str(e)
 
 @app.route('/stream_url', methods=['POST'])
@@ -66,6 +73,12 @@ def stream_url():
     yt_url = request.form.get('url', '')
     cookies_file = request.files.get('cookies.txt')  # Get uploaded cookies file
     cookies_url = request.form.get('cookies_url')  # Get cookies URL from form data
+
+    print(f"[DEBUG] Received request for URL: {yt_url}")
+    if cookies_file:
+        print(f"[DEBUG] Received cookies file: {cookies_file.filename}")
+    if cookies_url:
+        print(f"[DEBUG] Received cookies URL: {cookies_url}")
 
     if not yt_url:
         return jsonify({'error': 'YouTube URL is required'}), 400
@@ -76,6 +89,7 @@ def stream_url():
         # Save the cookies file temporarily
         cookies_file_path = os.path.join(TEMP_DIR, secure_filename(cookies_file.filename))
         cookies_file.save(cookies_file_path)
+        print(f"[DEBUG] Saved cookies file to: {cookies_file_path}")
     elif cookies_url:
         cookies_file_path = os.path.join(TEMP_DIR, 'cookies.txt')
         result = download_cookies_from_url(cookies_url, cookies_file_path)
@@ -83,11 +97,14 @@ def stream_url():
             return jsonify(result), 400
 
     # Get the stream URL (M3U8 URL or the best available stream URL)
+    print(f"[DEBUG] Calling get_stream_url with cookies: {cookies_file_path}")
     stream_url = get_stream_url(yt_url, cookies_file_path)
 
     if stream_url:
+        print(f"[DEBUG] Returning stream URL: {stream_url}")
         return jsonify({'stream_url': stream_url}), 200
     else:
+        print("[DEBUG] No stream URL found or failed to fetch URL")
         return jsonify({'error': 'Stream URL not found or failed to fetch URL'}), 400
 
 @app.route('/', methods=['GET'])
