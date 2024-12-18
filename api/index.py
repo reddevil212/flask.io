@@ -31,52 +31,26 @@ cookies = [
 ]
 
 
-# Write the cookies to a cookies.txt file
-def write_cookies_to_file(cookies, filename="cookies.txt"):
+def write_cookies_netscape_format(cookies, filename="cookies.txt"):
     with open(filename, "w") as f:
+        f.write("# Netscape HTTP Cookie File\n")
+        
         for cookie in cookies:
-            line = f"{cookie['name']}={cookie['value']}; domain={cookie['domain']}; path={cookie['path']}\n"
+            domain = cookie.get('domain', '')
+            secure = 'TRUE' if cookie.get('secure', False) else 'FALSE'
+            path = cookie.get('path', '/')
+            expiration = str(int(cookie.get('expirationDate', 0)))
+            name = cookie.get('name', '')
+            value = cookie.get('value', '')
+            httpOnly = 'TRUE' if cookie.get('httpOnly', False) else 'FALSE'
+            
+            line = f"{domain}\tTRUE\t{path}\t{secure}\t{expiration}\t{name}\t{value}\n"
             f.write(line)
-    print("Cookies have been written to cookies.txt")
+    
+    print(f"Cookies have been written to {filename}")
 
-# Write the cookies to the file
-write_cookies_to_file(cookies)
-
-# Helper function to validate YouTube URL
-def is_valid_youtube_url(url):
-    return 'youtube.com' in url or 'youtu.be' in url
-
-# Function to get the best audio stream URL from YouTube
-def get_best_audio_stream_url(video_url, cookies_file="cookies.txt"):
-    try:
-        # Set up yt-dlp options with the cookies file
-        ydl_opts = {
-            'format': 'bestaudio',  # Only focus on the best audio stream
-            'quiet': True,  # Suppress unnecessary output
-            'extractor_args': {
-                'youtube': {
-                    'noplaylist': True  # Disable playlist extraction
-                }
-            },
-            'cookiefile': cookies_file  # Pass the cookies file here
-        }
-
-        # Use yt-dlp to extract video info
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(video_url, download=False)
-
-            if 'formats' not in info_dict or not info_dict['formats']:
-                raise ValueError("No formats found for this video.")
-
-            # Get the URL of the best audio stream
-            for format in info_dict['formats']:
-                if format.get('acodec') != 'none' and format.get('url'):
-                    return format['url']
-
-            raise ValueError("No suitable audio stream found for this video.")
-
-    except Exception as e:
-        return {"error": str(e)}
+# Write the cookies to a file
+write_cookies_netscape_format(cookies)
 
 @app.route('/get_audio', methods=['GET'])
 def get_audio_stream_url():
@@ -96,6 +70,7 @@ def get_audio_stream_url():
         return jsonify(stream_url), 400
 
     return jsonify({'stream_url': stream_url})
+
 
 @app.route('/', methods=['GET'])
 def health_check():
