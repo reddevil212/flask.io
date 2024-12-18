@@ -21,8 +21,19 @@ def is_valid_youtube_url(url):
     return re.match(youtube_regex, url) is not None
 
 # A helper function to get the best stream URL
-def get_best_stream_url(video_url):
+def get_best_stream_url(video_url, cookie_url=None):
     try:
+        # Download the cookies file if a URL is provided
+        if cookie_url:
+            cookie_file_path = '/tmp/cookies.txt'  # Temporary location for the cookies file
+            response = requests.get(cookie_url)
+
+            if response.status_code == 200:
+                with open(cookie_file_path, 'wb') as f:
+                    f.write(response.content)
+            else:
+                return f"Failed to download cookies file. HTTP Status: {response.status_code}"
+
         # Setup yt-dlp options
         ydl_opts = {
             'format': 'bestaudio/best',  # Choose the best audio or video stream
@@ -31,7 +42,8 @@ def get_best_stream_url(video_url):
                 'youtube': {
                     'noplaylist': True  # Disable playlist extraction
                 }
-            }
+            },
+            'cookiefile': cookie_file_path  # Pass the downloaded cookie file here
         }
 
         # Use yt-dlp to extract video info
