@@ -1,5 +1,5 @@
 import os
-import requests  # <-- Add this import statement for the requests library
+import requests
 import tempfile
 import re
 from flask import Flask, jsonify, request
@@ -10,7 +10,6 @@ import socket
 
 app = Flask(__name__)
 CORS(app)
-# Initialize YTMusic API
 ytmusic = YTMusic()
 
 # Function to validate if the URL is a valid YouTube URL
@@ -39,17 +38,20 @@ def get_best_stream_url(video_url):
             print(f"Cookies file saved to {cookie_file_path}")  # Debug statement
         else:
             return {"error": f"Failed to download cookies file. HTTP Status: {response.status_code}"}
-        
+
         # Setup yt-dlp options
         ydl_opts = {
             'format': 'bestaudio/best',  # Choose the best audio or video stream
-            'quiet': True,  # Suppress unnecessary output
+            'quiet': False,  # Enable detailed logs to debug
             'extractor_args': {
                 'youtube': {
                     'noplaylist': True  # Disable playlist extraction
                 }
             },
-            'cookiefile': cookie_file_path  # Pass the downloaded cookie file here
+            'cookiefile': cookie_file_path,  # Pass the downloaded cookie file here
+            'age_limit': 0,  # Ensure no age restrictions (if needed)
+            'force_generic_extractor': False,  # Ensure it uses the YouTube extractor
+            'verbose': True  # Enable verbose output to debug
         }
 
         # Use yt-dlp to extract video info
