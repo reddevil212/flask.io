@@ -4,6 +4,9 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from ytmusicapi import YTMusic
 import socket
+import tempfile
+from google.cloud import storage
+import base64
 
 app = Flask(__name__)
 CORS(app)
@@ -11,17 +14,40 @@ CORS(app)
 # Initialize YTMusic API
 ytmusic = YTMusic()
 
+# Decode the service account key from the environment variable
+encoded_key = os.getenv('FIREBASE_SERVICE_ACCOUNT_KEY')
+if encoded_key is None:
+    raise ValueError("FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set")
+
+decoded_key = base64.b64decode(encoded_key)
+temp_dir = tempfile.mkdtemp()
+temp_file_path = os.path.join(temp_dir, 'service-account-key.json')
+with open(temp_file_path, 'wb') as f:
+    f.write(decoded_key)
+
+# Set the GOOGLE_APPLICATION_CREDENTIALS environment variable to the path of the decoded key file
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_file_path
+bucket_name = 'your-bucket-name'
+
+def download_cookies_file():
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob('cookies.txt')
+    if blob.exists():
+        temp_cookies_path = os.path.join(temp_dir, 'cookies.txt')
+        blob.download_to_filename(temp_cookies_path)
+        return temp_cookies_path
+    else:
+        raise FileNotFoundError("Cookies file not found in Firebase Storage.")
+
 # Helper function to validate YouTube URL
 def is_valid_youtube_url(url):
     return 'youtube.com' in url or 'youtu.be' in url
 
 def get_best_audio_stream_url(video_url):
     try:
-        # Path to the cookies.txt file in Render's environment
-        cookie_file_path = '/etc/secrets/cookies.txt'
-        
-        if not os.path.exists(cookie_file_path):
-            return {"error": "Cookies file not found in environment."}
+        # Download cookies file from Firebase Storage
+        cookie_file_path = download_cookies_file()
 
         # Setup yt-dlp options with the cookies file
         ydl_opts = {
