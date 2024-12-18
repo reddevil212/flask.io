@@ -26,6 +26,12 @@ def download_cookies_from_url(url, download_path):
         with open(download_path, 'wb') as f:
             f.write(response.content)
         
+        # Print the downloaded cookies content for debugging
+        print(f"Cookies data downloaded from URL: {url}")
+        with open(download_path, 'r') as f:
+            cookies_data = f.read()
+            print(f"Cookies Data: {cookies_data}")  # Logging cookies data
+
         return download_path
     except requests.exceptions.RequestException as e:
         print(f"Error downloading cookies file from URL: {str(e)}")
@@ -80,12 +86,22 @@ def get_audio():
         cookies_file_path = os.path.join(TEMP_DIR, secure_filename(cookies_file.filename))
         cookies_file.save(cookies_file_path)
         print(f"Received cookies file: {cookies_file.filename}")
+        
+        # Print cookies data from file
+        with open(cookies_file_path, 'r') as f:
+            cookies_data = f.read()
+            print(f"Cookies Data from file: {cookies_data}")
     elif cookies_url:
         cookies_file_path = os.path.join(TEMP_DIR, 'cookies.txt')
         result = download_cookies_from_url(cookies_url, cookies_file_path)
         if isinstance(result, dict) and 'error' in result:
             return jsonify(result), 400
         print(f"Received cookies URL: {cookies_url}")
+        
+        # Print cookies data from URL
+        with open(cookies_file_path, 'r') as f:
+            cookies_data = f.read()
+            print(f"Cookies Data from URL: {cookies_data}")
     else:
         # If no cookies file or URL is provided, use the default cookies URL
         cookies_file_path = os.path.join(TEMP_DIR, 'cookies.txt')
@@ -93,6 +109,11 @@ def get_audio():
         if isinstance(result, dict) and 'error' in result:
             return jsonify(result), 400
         print(f"No cookies file or URL provided. Using default cookies URL: {DEFAULT_COOKIE_URL}")
+        
+        # Print cookies data from the default URL
+        with open(cookies_file_path, 'r') as f:
+            cookies_data = f.read()
+            print(f"Cookies Data from default URL: {cookies_data}")
 
     # Step 3: Validate the YouTube URL
     if not is_valid_youtube_url(video_url):
@@ -121,4 +142,3 @@ def health_check():
 if __name__ == '__main__':
     print("Starting Flask server...")
     app.run(debug=True, host='0.0.0.0', port=5000)
-
