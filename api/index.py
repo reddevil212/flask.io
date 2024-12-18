@@ -36,9 +36,10 @@ def get_stream_url(yt_url, cookies_file_path=None):
         'noplaylist': False,
         'quiet': True,  # Disable output
         'forcejson': True,  # Get metadata in JSON format
-        'cookiefile': cookies_file_path,  # Use cookies if provided
-        'logger': yt_dlp.logger.getLogger()
     }
+
+    if cookies_file_path:
+        ydl_opts['cookiefile'] = cookies_file_path  # Use cookies if provided
 
     try:
         print(f"[DEBUG] Extracting stream URL for: {yt_url}")
