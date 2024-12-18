@@ -28,14 +28,14 @@ def get_best_stream_url(video_url, cookie_url=None):
             return {"error": "No cookie URL provided"}
         
         # Download the cookies file from the URL
-        cookie_file_path = '/tmp/cookies.txt'  # Temporary location for cookies
+        cookie_file_path = '/var/task/api/cookies.txt'  # Hardcoded location for cookies
         response = requests.get(cookie_url)
 
         # Check if the cookie file download was successful
         if response.status_code != 200:
             return {"error": f"Failed to download cookies file. HTTP Status: {response.status_code}"}
 
-        # Save cookies to a file
+        # Save cookies to the hardcoded path
         with open(cookie_file_path, 'wb') as f:
             f.write(response.content)
 
