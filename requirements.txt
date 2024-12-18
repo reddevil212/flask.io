@@ -3,4 +3,4 @@ yt_dlp==2024.12.13
 ytmusicapi==1.8.2
 Flask-Cors==5.0.0
 google-cloud-storage
-Werkzeug
+Werkzeug==2.1.1
