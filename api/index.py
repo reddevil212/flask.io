@@ -96,6 +96,12 @@ def stream_url():
         if isinstance(result, dict) and 'error' in result:
             return jsonify(result), 400
 
+    print(f"[DEBUG] Checking cookies file at: {cookies_file_path}")
+    if cookies_file_path and os.path.exists(cookies_file_path):
+        print(f"[DEBUG] Cookies file exists at: {cookies_file_path}")
+    else:
+        print("[DEBUG] No cookies file found.")
+
     # Get the stream URL (M3U8 URL or the best available stream URL)
     print(f"[DEBUG] Calling get_stream_url with cookies: {cookies_file_path}")
     stream_url = get_stream_url(yt_url, cookies_file_path)
@@ -244,3 +250,4 @@ def get_lyrics():
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+
