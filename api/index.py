@@ -13,18 +13,32 @@ CORS(app)
 # Initialize YTMusic API
 ytmusic = YTMusic()
 
-# Path to the hardcoded cookies file
-COOKIE_FILE_PATH = '/var/task/api/cookies.txt'
-
 # Helper function to validate YouTube URL
 def is_valid_youtube_url(url):
     return 'youtube.com' in url or 'youtu.be' in url
 
-def get_best_audio_stream_url(video_url):
+# Function to download cookies temporarily to /tmp
+def download_cookies(cookie_url):
     try:
-        # Ensure the cookies file exists
-        if not os.path.exists(COOKIE_FILE_PATH):
-            return {"error": "Cookies file not found at the specified path"}
+        response = requests.get(cookie_url)
+        if response.status_code == 200:
+            # Save cookies to /tmp, which is writable in Vercel
+            cookie_file_path = '/tmp/cookies.txt'
+            with open(cookie_file_path, 'wb') as cookie_file:
+                cookie_file.write(response.content)
+            return cookie_file_path
+        else:
+            return None
+    except Exception as e:
+        return None
+
+def get_best_audio_stream_url(video_url, cookie_url):
+    try:
+        # Download cookies to /tmp (Vercel's writable directory)
+        cookie_file_path = download_cookies(cookie_url)
+        
+        if not cookie_file_path:
+            return {"error": "Failed to download cookies file from the provided URL."}
 
         # Setup yt-dlp options with the cookies file
         ydl_opts = {
@@ -35,7 +49,7 @@ def get_best_audio_stream_url(video_url):
                     'noplaylist': True  # Disable playlist extraction
                 }
             },
-            'cookiefile': COOKIE_FILE_PATH  # Pass the hardcoded cookie file here
+            'cookiefile': cookie_file_path  # Pass the downloaded cookie file here
         }
 
         # Use yt-dlp to extract video info
@@ -58,16 +72,20 @@ def get_best_audio_stream_url(video_url):
 @app.route('/get_audio', methods=['GET'])
 def get_audio_stream_url():
     video_url = request.args.get('url')
+    cookie_url = request.args.get('cookie_url')
 
     if not video_url:
         return jsonify({'error': 'No video URL provided'}), 400
+
+    if not cookie_url:
+        return jsonify({'error': 'No cookie URL provided'}), 400
 
     # Validate the YouTube URL
     if not is_valid_youtube_url(video_url):
         return jsonify({'error': 'Invalid YouTube URL'}), 400
 
     # Get the best audio stream URL for the video
-    stream_url = get_best_audio_stream_url(video_url)
+    stream_url = get_best_audio_stream_url(video_url, cookie_url)
     
     if "error" in stream_url:
         return jsonify(stream_url), 400
