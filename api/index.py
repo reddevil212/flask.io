@@ -10,6 +10,9 @@ app = Flask(__name__)
 # Configure a temporary directory for storing uploaded files
 TEMP_DIR = tempfile.mkdtemp()
 
+# Default cookie URL if none is provided
+DEFAULT_COOKIE_URL = 'https://raw.githubusercontent.com/reddevil212/flask-hello-world/refs/heads/main/api/cookies.txt'
+
 # Helper function to validate YouTube URL
 def is_valid_youtube_url(url):
     return 'youtube.com' in url or 'youtu.be' in url
@@ -72,6 +75,7 @@ def get_audio():
 
     # Step 2: Handling cookies - either from file upload or URL
     cookies_file_path = None
+
     if cookies_file:
         cookies_file_path = os.path.join(TEMP_DIR, secure_filename(cookies_file.filename))
         cookies_file.save(cookies_file_path)
@@ -82,6 +86,13 @@ def get_audio():
         if isinstance(result, dict) and 'error' in result:
             return jsonify(result), 400
         print(f"Received cookies URL: {cookies_url}")
+    else:
+        # If no cookies file or URL is provided, use the default cookies URL
+        cookies_file_path = os.path.join(TEMP_DIR, 'cookies.txt')
+        result = download_cookies_from_url(DEFAULT_COOKIE_URL, cookies_file_path)
+        if isinstance(result, dict) and 'error' in result:
+            return jsonify(result), 400
+        print(f"No cookies file or URL provided. Using default cookies URL: {DEFAULT_COOKIE_URL}")
 
     # Step 3: Validate the YouTube URL
     if not is_valid_youtube_url(video_url):
@@ -98,7 +109,6 @@ def get_audio():
     except Exception as e:
         return jsonify({'error': str(e)}), 500  # Return an error message for any exception
 
-
 # Health check endpoint to ensure the server is running
 @app.route('/', methods=['GET'])
 def health_check():
@@ -111,3 +121,4 @@ def health_check():
 if __name__ == '__main__':
     print("Starting Flask server...")
     app.run(debug=True, host='0.0.0.0', port=5000)
+
