@@ -13,46 +13,29 @@ CORS(app)
 # Initialize YTMusic API
 ytmusic = YTMusic()
 
-# Function to validate if the URL is a valid YouTube URL
+# Path to the hardcoded cookies file
+COOKIE_FILE_PATH = '/var/task/api/cookies.txt'
+
+# Helper function to validate YouTube URL
 def is_valid_youtube_url(url):
-    youtube_regex = (
-        r'(https?://)?(www\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/'
-        r'(watch\?v=|embed/|v/|.+/videoseries\?v=)[a-zA-Z0-9_-]{11}')
-    return re.match(youtube_regex, url) is not None
+    return 'youtube.com' in url or 'youtu.be' in url
 
-# A helper function to get the best stream URL with cookies
-def get_best_stream_url(video_url, cookie_url=None):
+def get_best_audio_stream_url(video_url):
     try:
-        # Check if cookie_url is provided
-        if not cookie_url:
-            return {"error": "No cookie URL provided"}
-        
-        # Download the cookies file from the URL
-        cookie_file_path = '/var/task/api/cookies.txt'  # Hardcoded location for cookies
-        response = requests.get(cookie_url)
-
-        # Check if the cookie file download was successful
-        if response.status_code != 200:
-            return {"error": f"Failed to download cookies file. HTTP Status: {response.status_code}"}
-
-        # Save cookies to the hardcoded path
-        with open(cookie_file_path, 'wb') as f:
-            f.write(response.content)
-
-        # Ensure cookies file has proper format (Netscape format)
-        if not os.path.exists(cookie_file_path):
-            return {"error": "Cookie file not found or could not be saved correctly"}
+        # Ensure the cookies file exists
+        if not os.path.exists(COOKIE_FILE_PATH):
+            return {"error": "Cookies file not found at the specified path"}
 
         # Setup yt-dlp options with the cookies file
         ydl_opts = {
-            'format': 'bestaudio/best',  # Choose the best audio or video stream
+            'format': 'bestaudio',  # Only focus on the best audio stream
             'quiet': True,  # Suppress unnecessary output
             'extractor_args': {
                 'youtube': {
                     'noplaylist': True  # Disable playlist extraction
                 }
             },
-            'cookiefile': cookie_file_path  # Pass the downloaded cookie file here
+            'cookiefile': COOKIE_FILE_PATH  # Pass the hardcoded cookie file here
         }
 
         # Use yt-dlp to extract video info
@@ -62,33 +45,29 @@ def get_best_stream_url(video_url, cookie_url=None):
             if 'formats' not in info_dict or not info_dict['formats']:
                 raise ValueError("No formats found for this video.")
 
-            # Get the URL of the best stream
+            # Get the URL of the best audio stream
             for format in info_dict['formats']:
                 if format.get('acodec') != 'none' and format.get('url'):
                     return format['url']
 
-            raise ValueError("No suitable stream found for this video.")
+            raise ValueError("No suitable audio stream found for this video.")
 
     except Exception as e:
         return {"error": str(e)}
 
-@app.route('/get_stream_url', methods=['GET'])
-def get_stream_url():
+@app.route('/get_audio', methods=['GET'])
+def get_audio_stream_url():
     video_url = request.args.get('url')
-    cookie_url = request.args.get('cookie_url')
 
     if not video_url:
         return jsonify({'error': 'No video URL provided'}), 400
-
-    if not cookie_url:
-        return jsonify({'error': 'No cookie URL provided'}), 400
 
     # Validate the YouTube URL
     if not is_valid_youtube_url(video_url):
         return jsonify({'error': 'Invalid YouTube URL'}), 400
 
-    # Get the best stream URL for the video
-    stream_url = get_best_stream_url(video_url, cookie_url)
+    # Get the best audio stream URL for the video
+    stream_url = get_best_audio_stream_url(video_url)
     
     if "error" in stream_url:
         return jsonify(stream_url), 400
