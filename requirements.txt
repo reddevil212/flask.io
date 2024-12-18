@@ -3,5 +3,3 @@ yt_dlp==2024.12.13
 ytmusicapi==1.8.2
 Flask-Cors==5.0.0
 google-cloud-storage
-chromedriver-autoinstaller==0.3.1
-selenium==4.8.2
