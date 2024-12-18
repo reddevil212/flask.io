@@ -9,7 +9,7 @@ import ytmusicapi  # Importing ytmusicapi
 app = Flask(__name__)
 
 # Initialize the YTMusic API client
-ytmusic = YTMusic()  # Assuming 'headers_auth.json' is available
+ytmusic = ytmusicapi.YTMusic()  # Assuming 'headers_auth.json' is available
 
 # Temporary directory for storing uploaded files
 TEMP_DIR = tempfile.mkdtemp()
