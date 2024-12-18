@@ -27,7 +27,7 @@ with open(temp_file_path, 'wb') as f:
 
 # Set the GOOGLE_APPLICATION_CREDENTIALS environment variable to the path of the decoded key file
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_file_path
-bucket_name = 'your-bucket-name'
+bucket_name = 'quizwapp.appspot.com'
 
 def download_cookies_file():
     client = storage.Client()
