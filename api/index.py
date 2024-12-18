@@ -21,30 +21,25 @@ def is_valid_youtube_url(url):
     return re.match(youtube_regex, url) is not None
 
 # A helper function to get the best stream URL
-def get_best_stream_url(video_url, cookie_url=None):
+def get_best_stream_url(video_url):
     try:
-        # Initialize cookie file path
-        cookie_file_path = None
+        # Hardcoded URL for the cookies file stored on Firebase
+        cookie_url = "https://firebasestorage.googleapis.com/v0/b/quizwapp.appspot.com/o/cookies.txt?alt=media&token=61ed087a-4e7b-4576-a66d-dabcbdea0240"
         
-        # Check if cookie_url is provided
-        if cookie_url:
-            cookie_file_path = '/tmp/cookies.txt'  # Temporary location for the cookies file
-            
-            # Try to download the cookies file
-            response = requests.get(cookie_url)
-            
-            if response.status_code == 200:
-                # Save the cookies file locally
-                with open(cookie_file_path, 'wb') as f:
-                    f.write(response.content)
-                print(f"Cookies file saved to {cookie_file_path}")  # Debug statement
-            else:
-                return {"error": f"Failed to download cookies file. HTTP Status: {response.status_code}"}
+        # Hardcoded path where the cookies file will be saved temporarily
+        cookie_file_path = '/tmp/cookies.txt'  # Adjust this path if needed
         
-        # Check if cookie_file_path was set (cookies were downloaded)
-        if not cookie_file_path:
-            return {"error": "No cookie file path available, cookie_url might be missing or invalid"}
-
+        # Download the cookies file from the provided URL
+        response = requests.get(cookie_url)
+        
+        if response.status_code == 200:
+            # Save the cookies file locally
+            with open(cookie_file_path, 'wb') as f:
+                f.write(response.content)
+            print(f"Cookies file saved to {cookie_file_path}")  # Debug statement
+        else:
+            return {"error": f"Failed to download cookies file. HTTP Status: {response.status_code}"}
+        
         # Setup yt-dlp options
         ydl_opts = {
             'format': 'bestaudio/best',  # Choose the best audio or video stream
