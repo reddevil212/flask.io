@@ -39,6 +39,10 @@ def get_best_stream_url(video_url, cookie_url=None):
         with open(cookie_file_path, 'wb') as f:
             f.write(response.content)
 
+        # Ensure cookies file has proper format (Netscape format)
+        if not os.path.exists(cookie_file_path):
+            return {"error": "Cookie file not found or could not be saved correctly"}
+
         # Setup yt-dlp options with the cookies file
         ydl_opts = {
             'format': 'bestaudio/best',  # Choose the best audio or video stream
@@ -90,8 +94,6 @@ def get_stream_url():
         return jsonify(stream_url), 400
 
     return jsonify({'stream_url': stream_url})
-
-
 
 @app.route('/', methods=['GET'])
 def health_check():
