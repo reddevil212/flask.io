@@ -20,40 +20,29 @@ def is_valid_youtube_url(url):
         r'(watch\?v=|embed/|v/|.+/videoseries\?v=)[a-zA-Z0-9_-]{11}')
     return re.match(youtube_regex, url) is not None
 
-# A helper function to get the best stream URL
+# A helper function to get the best stream URL with cookies
 def get_best_stream_url(video_url, cookie_url=None):
     try:
-        # Initialize cookie file path
-        cookie_file_path = None
-        
         # Check if cookie_url is provided
-        if cookie_url:
-            cookie_file_path = '/tmp/cookies.txt'  # Temporary location for the cookies file
-            
-            # Try to download the cookies file
-            response = requests.get(cookie_url)
-            
-            if response.status_code == 200:
-                # Save the cookies file locally
-                with open(cookie_file_path, 'wb') as f:
-                    f.write(response.content)
-                print(f"Cookies file saved to {cookie_file_path}")  # Debug statement
-            else:
-                return {"error": f"Failed to download cookies file. HTTP Status: {response.status_code}"}
+        if not cookie_url:
+            return {"error": "No cookie URL provided"}
         
-        # Check if cookie_file_path was set (cookies were downloaded)
-        if not cookie_file_path:
-            return {"error": "No cookie file path available, cookie_url might be missing or invalid"}
+        # Download the cookies file from the URL
+        cookie_file_path = '/tmp/cookies.txt'  # Temporary location for cookies
+        response = requests.get(cookie_url)
 
-        # Verify cookie file contents (optional debug logging)
-        with open(cookie_file_path, 'rb') as f:
-            cookie_contents = f.read()
-            print(f"Cookie file contents: {cookie_contents[:200]}...")  # Log the first 200 bytes for debug
+        # Check if the cookie file download was successful
+        if response.status_code != 200:
+            return {"error": f"Failed to download cookies file. HTTP Status: {response.status_code}"}
 
-        # Setup yt-dlp options
+        # Save cookies to a file
+        with open(cookie_file_path, 'wb') as f:
+            f.write(response.content)
+
+        # Setup yt-dlp options with the cookies file
         ydl_opts = {
             'format': 'bestaudio/best',  # Choose the best audio or video stream
-            'quiet': False,  # Show verbose output
+            'quiet': True,  # Suppress unnecessary output
             'extractor_args': {
                 'youtube': {
                     'noplaylist': True  # Disable playlist extraction
@@ -82,26 +71,28 @@ def get_best_stream_url(video_url, cookie_url=None):
 @app.route('/get_stream_url', methods=['GET'])
 def get_stream_url():
     video_url = request.args.get('url')
-    
+    cookie_url = request.args.get('cookie_url')
+
     if not video_url:
         return jsonify({'error': 'No video URL provided'}), 400
+
+    if not cookie_url:
+        return jsonify({'error': 'No cookie URL provided'}), 400
 
     # Validate the YouTube URL
     if not is_valid_youtube_url(video_url):
         return jsonify({'error': 'Invalid YouTube URL'}), 400
 
-    # Hardcoded cookies URL (for now)
-    cookie_url = 'https://firebasestorage.googleapis.com/v0/b/quizwapp.appspot.com/o/cookies.txt?alt=media&token=61ed087a-4e7b-4576-a66d-dabcbdea0240'
-
     # Get the best stream URL for the video
-    stream_url = get_best_stream_url(video_url, cookie_url=cookie_url)
+    stream_url = get_best_stream_url(video_url, cookie_url)
     
-    if "http" not in stream_url:
-        return jsonify({'error': stream_url}), 400  # Error message from yt-dlp
+    if "error" in stream_url:
+        return jsonify(stream_url), 400
 
     return jsonify({'stream_url': stream_url})
 
-# Health check endpoint
+
+
 @app.route('/', methods=['GET'])
 def health_check():
     try:
