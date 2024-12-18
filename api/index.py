@@ -23,6 +23,9 @@ def is_valid_youtube_url(url):
 # A helper function to get the best stream URL
 def get_best_stream_url(video_url, cookie_url=None):
     try:
+        # Initialize cookie file path
+        cookie_file_path = None
+        
         # Download the cookies file if a URL is provided
         if cookie_url:
             cookie_file_path = '/tmp/cookies.txt'  # Temporary location for the cookies file
@@ -33,6 +36,9 @@ def get_best_stream_url(video_url, cookie_url=None):
                     f.write(response.content)
             else:
                 return f"Failed to download cookies file. HTTP Status: {response.status_code}"
+
+        if not cookie_file_path:
+            return {"error": "No cookie file path available"}
 
         # Setup yt-dlp options
         ydl_opts = {
@@ -61,7 +67,7 @@ def get_best_stream_url(video_url, cookie_url=None):
             raise ValueError("No suitable stream found for this video.")
 
     except Exception as e:
-        return str(e)
+        return {"error": str(e)}
 
 @app.route('/get_stream_url', methods=['GET'])
 def get_stream_url():
