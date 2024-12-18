@@ -26,19 +26,24 @@ def get_best_stream_url(video_url, cookie_url=None):
         # Initialize cookie file path
         cookie_file_path = None
         
-        # Download the cookies file if a URL is provided
+        # Check if cookie_url is provided
         if cookie_url:
             cookie_file_path = '/tmp/cookies.txt'  # Temporary location for the cookies file
+            
+            # Try to download the cookies file
             response = requests.get(cookie_url)
-
+            
             if response.status_code == 200:
+                # Save the cookies file locally
                 with open(cookie_file_path, 'wb') as f:
                     f.write(response.content)
+                print(f"Cookies file saved to {cookie_file_path}")  # Debug statement
             else:
-                return f"Failed to download cookies file. HTTP Status: {response.status_code}"
-
+                return {"error": f"Failed to download cookies file. HTTP Status: {response.status_code}"}
+        
+        # Check if cookie_file_path was set (cookies were downloaded)
         if not cookie_file_path:
-            return {"error": "No cookie file path available"}
+            return {"error": "No cookie file path available, cookie_url might be missing or invalid"}
 
         # Setup yt-dlp options
         ydl_opts = {
