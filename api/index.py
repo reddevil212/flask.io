@@ -48,6 +48,7 @@ def get_audio_stream_url(video_url, cookies_file_path):
         'noplaylist': True,          # Don't download playlists
         'quiet': True,               # Suppress unnecessary output
         'cookiefile': cookies_file_path,  # Include cookies if provided
+        'verbose': True              # Enable verbose logging for debugging
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
