@@ -10,6 +10,9 @@ app = Flask(__name__)
 # Configure a temporary directory for storing uploaded files
 TEMP_DIR = tempfile.mkdtemp()
 
+# Default cookies file URL if no cookies file or cookies URL is provided
+DEFAULT_COOKIES_URL = "https://raw.githubusercontent.com/reddevil212/jks/refs/heads/main/cookies.txt"
+
 # Helper function to validate YouTube URL
 def is_valid_youtube_url(url):
     print(f"Validating YouTube URL: {url}")
@@ -46,15 +49,11 @@ def get_audio_url_from_json(video_url, cookies_file_path):
         try:
             # Extract video info (without downloading)
             info_dict = ydl.extract_info(video_url, download=False)
-           
-
+            
             # Iterate over formats to find the first audio-only stream
             for format in info_dict['formats']:
-               
                 # Find the first format with audio and no video codec
                 if format['acodec'] == 'opus' and format['vcodec'] == 'none' and format.get('url'):
-                    # Return the audio URL
-                   
                     return format['url']
 
             return None  # No valid audio stream found
@@ -78,7 +77,7 @@ def get_audio():
         return jsonify({'error': 'No video URL provided'}), 400
     print(f"Received YouTube URL: {video_url}")
 
-    # Step 2: Handling cookies - either from file upload or URL
+    # Step 2: Handling cookies - either from file upload, URL, or default URL
     cookies_file_path = None
     if cookies_file:
         cookies_file_path = os.path.join(TEMP_DIR, secure_filename(cookies_file.filename))
@@ -88,6 +87,13 @@ def get_audio():
     elif cookies_url:
         cookies_file_path = os.path.join(TEMP_DIR, 'cookies.txt')
         result = download_cookies_from_url(cookies_url, cookies_file_path)
+        if isinstance(result, dict) and 'error' in result:
+            return jsonify(result), 400
+    else:
+        # If no cookies file or cookies URL is provided, use the default URL
+        cookies_file_path = os.path.join(TEMP_DIR, 'cookies.txt')
+        print(f"Using default cookies file URL: {DEFAULT_COOKIES_URL}")
+        result = download_cookies_from_url(DEFAULT_COOKIES_URL, cookies_file_path)
         if isinstance(result, dict) and 'error' in result:
             return jsonify(result), 400
 
