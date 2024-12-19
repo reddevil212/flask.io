@@ -1,137 +1,118 @@
-import os
 import yt_dlp
+from flask import Flask, request, jsonify
 import tempfile
+import os
 import requests
-from flask import Flask, jsonify, request
 from werkzeug.utils import secure_filename
+import ytmusicapi  # Importing ytmusicapi
 
 app = Flask(__name__)
 
-# Configure a temporary directory for storing uploaded files
+# Initialize the YTMusic API client
+ytmusic = ytmusicapi.YTMusic()  # Assuming 'headers_auth.json' is available
+
+# Temporary directory for storing uploaded files
 TEMP_DIR = tempfile.mkdtemp()
 
-# Default cookie URL if none is provided
-DEFAULT_COOKIE_URL = 'https://raw.githubusercontent.com/reddevil212/flask-hello-world/refs/heads/main/api/cookies.txt'
-
-# Helper function to validate YouTube URL
-def is_valid_youtube_url(url):
-    return 'youtube.com' in url or 'youtu.be' in url
-
-# Helper function to download the cookies file from a URL
+# Helper function to download cookies from a URL
 def download_cookies_from_url(url, download_path):
-    print(f"Attempting to download cookies from URL: {url}")
     try:
+        # Download the cookies file from the URL
+        print(f"[DEBUG] Downloading cookies from: {url}")
         response = requests.get(url)
         response.raise_for_status()  # Raise an error for bad responses
         with open(download_path, 'wb') as f:
             f.write(response.content)
-        
-        # Print the downloaded cookies content for debugging
-        print(f"Cookies data downloaded from URL: {url}")
-        with open(download_path, 'r') as f:
-            cookies_data = f.read()
-            print(f"Cookies Data: {cookies_data}")  # Logging cookies data
-
+        print(f"[DEBUG] Cookies saved to: {download_path}")
         return download_path
     except requests.exceptions.RequestException as e:
-        print(f"Error downloading cookies file from URL: {str(e)}")
+        print(f"[ERROR] Failed to download cookies: {str(e)}")
         return {"error": f"Failed to download cookies from URL: {str(e)}"}
 
-# Function to get the best audio stream URL for a YouTube video
-def get_audio_stream_url(video_url, cookies_file_path):
-    # Options for yt-dlp, including cookie file if provided
+# Function to extract M3U8 URL or the best available stream URL
+def get_stream_url(yt_url, cookies_file_path=None):
     ydl_opts = {
-        'format': 'bestaudio/best',  # Choose the best audio format
-        'extractaudio': True,        # Extract audio only
-        'audioquality': 1,           # Set audio quality (1 = best)
-        'outtmpl': '%(id)s.%(ext)s',  # File output template (not actually used here)
-        'noplaylist': True,          # Don't download playlists
-        'quiet': True,               # Suppress unnecessary output
-        'cookiefile': cookies_file_path,  # Include cookies if provided
-        'verbose': True              # Enable verbose logging for debugging
+        'format': 'bestaudio/best',
+        'noplaylist': False,
+        'quiet': True,  # Disable output
+        'forcejson': True,  # Get metadata in JSON format
     }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        # Extract video info (without downloading the video)
-        info_dict = ydl.extract_info(video_url, download=False)
-        
-        # Initialize a variable to store the audio stream URL
-        audio_stream_url = None
+    if cookies_file_path:
+        ydl_opts['cookiefile'] = cookies_file_path  # Use cookies if provided
 
-        # Iterate through the formats and find the audio stream
-        for format in info_dict['formats']:
-            # Only select formats that are audio and streamable
-            if 'audio' in format['format']:
-                if 'url' in format:
-                    audio_stream_url = format['url']  # Get the URL of the audio stream
-                    break  # Stop after finding the first valid audio URL
+    try:
+        print(f"[DEBUG] Extracting stream URL for: {yt_url}")
+        if cookies_file_path:
+            print(f"[DEBUG] Using cookies from: {cookies_file_path}")
+        else:
+            print("[DEBUG] No cookies provided.")
 
-        return audio_stream_url  # Return the stream URL (or None if not found)
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            print("[DEBUG] Calling yt-dlp to extract info...")
+            info_dict = ydl.extract_info(yt_url, download=False)
 
-# Route to fetch the audio stream URL
-@app.route('/get_audio', methods=['POST'])
-def get_audio():
-    # Extracting the video URL and cookies file (or URL)
-    video_url = request.form.get('url')
-    cookies_file = request.files.get('cookies.txt')
-    cookies_url = request.form.get('cookies_url')
+            print(f"[DEBUG] Extracted info: {info_dict}")
 
-    # Step 1: Validate the video URL
-    if not video_url:
-        return jsonify({'error': 'No video URL provided'}), 400
+            if 'formats' in info_dict:
+                for format in info_dict['formats']:
+                    print(f"[DEBUG] Available format: {format}")
+                    if format.get('format_id') and 'm3u8' in format.get('url', ''):
+                        print(f"[DEBUG] Found M3U8 stream URL: {format['url']}")
+                        return format['url']
 
-    # Step 2: Handling cookies - either from file upload or URL
-    cookies_file_path = None
+            print("[DEBUG] No M3U8 stream URL found.")
+            return None
+    except Exception as e:
+        print(f"[ERROR] Failed to get stream URL: {e}")
+        return str(e)
 
+@app.route('/stream_url', methods=['POST'])
+def stream_url():
+    # Extract the 'url' parameter from form data
+    yt_url = request.form.get('url', '')
+    cookies_file = request.files.get('cookies.txt')  # Get uploaded cookies file
+    cookies_url = request.form.get('cookies_url')  # Get cookies URL from form data
+
+    print(f"[DEBUG] Received request for URL: {yt_url}")
     if cookies_file:
+        print(f"[DEBUG] Received cookies file: {cookies_file.filename}")
+    if cookies_url:
+        print(f"[DEBUG] Received cookies URL: {cookies_url}")
+
+    if not yt_url:
+        return jsonify({'error': 'YouTube URL is required'}), 400
+
+    # Handle cookies - either uploaded or downloaded
+    cookies_file_path = None
+    if cookies_file:
+        # Save the cookies file temporarily
         cookies_file_path = os.path.join(TEMP_DIR, secure_filename(cookies_file.filename))
         cookies_file.save(cookies_file_path)
-        print(f"Received cookies file: {cookies_file.filename}")
-        
-        # Print cookies data from file
-        with open(cookies_file_path, 'r') as f:
-            cookies_data = f.read()
-            print(f"Cookies Data from file: {cookies_data}")
+        print(f"[DEBUG] Saved cookies file to: {cookies_file_path}")
     elif cookies_url:
         cookies_file_path = os.path.join(TEMP_DIR, 'cookies.txt')
         result = download_cookies_from_url(cookies_url, cookies_file_path)
         if isinstance(result, dict) and 'error' in result:
             return jsonify(result), 400
-        print(f"Received cookies URL: {cookies_url}")
-        
-        # Print cookies data from URL
-        with open(cookies_file_path, 'r') as f:
-            cookies_data = f.read()
-            print(f"Cookies Data from URL: {cookies_data}")
+
+    print(f"[DEBUG] Checking cookies file at: {cookies_file_path}")
+    if cookies_file_path and os.path.exists(cookies_file_path):
+        print(f"[DEBUG] Cookies file exists at: {cookies_file_path}")
     else:
-        # If no cookies file or URL is provided, use the default cookies URL
-        cookies_file_path = os.path.join(TEMP_DIR, 'cookies.txt')
-        result = download_cookies_from_url(DEFAULT_COOKIE_URL, cookies_file_path)
-        if isinstance(result, dict) and 'error' in result:
-            return jsonify(result), 400
-        print(f"No cookies file or URL provided. Using default cookies URL: {DEFAULT_COOKIE_URL}")
-        
-        # Print cookies data from the default URL
-        with open(cookies_file_path, 'r') as f:
-            cookies_data = f.read()
-            print(f"Cookies Data from default URL: {cookies_data}")
+        print("[DEBUG] No cookies file found.")
 
-    # Step 3: Validate the YouTube URL
-    if not is_valid_youtube_url(video_url):
-        return jsonify({'error': 'Invalid YouTube URL'}), 400
+    # Get the stream URL (M3U8 URL or the best available stream URL)
+    print(f"[DEBUG] Calling get_stream_url with cookies: {cookies_file_path}")
+    stream_url = get_stream_url(yt_url, cookies_file_path)
 
-    try:
-        # Step 4: Fetch the best audio stream URL
-        audio_stream_url = get_audio_stream_url(video_url, cookies_file_path)
-        
-        if audio_stream_url:
-            return jsonify({'audio_stream_url': audio_stream_url})  # Return the stream URL if found
-        else:
-            return jsonify({'error': 'Audio stream not found for this video'}), 404  # Error if no audio found
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500  # Return an error message for any exception
+    if stream_url:
+        print(f"[DEBUG] Returning stream URL: {stream_url}")
+        return jsonify({'stream_url': stream_url}), 200
+    else:
+        print("[DEBUG] No stream URL found or failed to fetch URL")
+        return jsonify({'error': 'Stream URL not found or failed to fetch URL'}), 400
 
-# Health check endpoint to ensure the server is running
 @app.route('/', methods=['GET'])
 def health_check():
     try:
@@ -139,7 +120,133 @@ def health_check():
     except Exception as e:
         return jsonify({"status": "fail", "message": f"Health check failed: {str(e)}"}), 503
 
-# Start the Flask server
+
+@app.route('/search', methods=['GET'])
+def search():
+    query = request.args.get('query')
+    if not query:
+        return jsonify({'error': 'Query parameter is required'}), 400
+
+    try:
+        search_results = ytmusic.search(query)
+        return jsonify(search_results)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# Add missing endpoints for search suggestions, artist and album info
+@app.route('/search_suggestions', methods=['GET'])
+def search_suggestions():
+    query = request.args.get('query')
+    if not query:
+        return jsonify({'error': 'Query parameter is required'}), 400
+
+    try:
+        suggestions = ytmusic.search(query, filter='suggestions')
+        return jsonify(suggestions)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/get_artist', methods=['GET'])
+def get_artist():
+    artist_id = request.args.get('artistId')
+    if not artist_id:
+        return jsonify({'error': 'Artist ID parameter is required'}), 400
+
+    try:
+        artist_info = ytmusic.get_artist(artist_id)
+        return jsonify(artist_info)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_artist_albums', methods=['GET'])
+def get_artist_albums():
+    artist_id = request.args.get('artistId')
+    if not artist_id:
+        return jsonify({'error': 'Artist ID parameter is required'}), 400
+
+    try:
+        artist_albums = ytmusic.get_artist_albums(artist_id)
+        return jsonify(artist_albums)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_album', methods=['GET'])
+def get_album():
+    album_id = request.args.get('albumId')
+    if not album_id:
+        return jsonify({'error': 'Album ID parameter is required'}), 400
+
+    try:
+        album_info = ytmusic.get_album(album_id)
+        return jsonify(album_info)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_album_browse_id', methods=['GET'])
+def get_album_browse_id():
+    album_id = request.args.get('albumId')
+    if not album_id:
+        return jsonify({'error': 'Album ID parameter is required'}), 400
+
+    try:
+        browse_id = ytmusic.get_album_browse_id(album_id)
+        return jsonify({'browseId': browse_id})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_user', methods=['GET'])
+def get_user():
+    try:
+        user_info = ytmusic.get_user()
+        return jsonify(user_info)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_user_playlists', methods=['GET'])
+def get_user_playlists():
+    try:
+        playlists = ytmusic.get_library_playlists()
+        return jsonify(playlists)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_song', methods=['GET'])
+def get_song():
+    song_id = request.args.get('songId')
+    if not song_id:
+        return jsonify({'error': 'Song ID parameter is required'}), 400
+
+    try:
+        song_info = ytmusic.get_song(song_id)
+        return jsonify(song_info)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_song_related', methods=['GET'])
+def get_song_related():
+    video_id = request.args.get('videoId')
+    if not video_id:
+        return jsonify({'error': 'Video ID parameter is required'}), 400
+
+    try:
+        related_songs = ytmusic.get_related(videoId=video_id)
+        return jsonify(related_songs)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_lyrics', methods=['GET'])
+def get_lyrics():
+    video_id = request.args.get('videoId')
+    if not video_id:
+        return jsonify({'error': 'Video ID parameter is required'}), 400
+
+    try:
+        lyrics = ytmusic.get_lyrics(videoId=video_id)
+        return jsonify({'lyrics': lyrics})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
-    print("Starting Flask server...")
     app.run(debug=True, host='0.0.0.0', port=5000)
