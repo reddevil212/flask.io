@@ -4,6 +4,7 @@ import os
 import tempfile
 import requests
 from werkzeug.utils import secure_filename
+from vercel_flask import VercelFlask
 
 app = Flask(__name__)
 
@@ -81,6 +82,5 @@ def get_audio():
 def health_check():
     return jsonify({"status": "success", "message": "The API is up and running!"}), 200
 
-# Vercel wrapper
-def handler(event, context):
-    return app(event, context)
+# Use VercelFlask to wrap the Flask app for serverless deployment
+vercel_app = VercelFlask(app)
