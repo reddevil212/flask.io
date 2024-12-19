@@ -1,18 +1,15 @@
-import yt_dlp
-from flask import Flask, request, jsonify
-import tempfile
 import os
+import yt_dlp
+import tempfile
 import requests
+from flask import Flask, jsonify, request
 from werkzeug.utils import secure_filename
-import ytmusicapi  # Importing ytmusicapi
 
 app = Flask(__name__)
 
-# Initialize the YTMusic API client
-ytmusic = ytmusicapi.YTMusic()  # Assuming 'headers_auth.json' is available
-
 # Configure a temporary directory for storing uploaded files
 TEMP_DIR = tempfile.mkdtemp()
+print(f"Created temporary directory at: {TEMP_DIR}")
 
 # Helper function to validate YouTube URL
 def is_valid_youtube_url(url):
@@ -50,15 +47,15 @@ def get_audio_url_from_json(video_url, cookies_file_path):
         try:
             # Extract video info (without downloading)
             info_dict = ydl.extract_info(video_url, download=False)
-           
+            print(f"Extracted Info: {info_dict}")  # Debugging output
 
             # Iterate over formats to find the first audio-only stream
             for format in info_dict['formats']:
-               
+                print(f"Checking format: {format}")  # Debugging output
                 # Find the first format with audio and no video codec
                 if format['acodec'] == 'opus' and format['vcodec'] == 'none' and format.get('url'):
                     # Return the audio URL
-                   
+                    print(f"Found audio URL: {format['url']}")
                     return format['url']
 
             return None  # No valid audio stream found
@@ -123,140 +120,17 @@ def get_audio():
         print(f"Error during audio URL extraction: {str(e)}")
         return jsonify({'error': str(e)}), 500  # Return an error message for any exception
 
+# Health check endpoint to ensure the server is running
 @app.route('/', methods=['GET'])
 def health_check():
     try:
+        print("Health check request received.")
         return jsonify({"status": "success", "message": "The API is up and running!"}), 200
     except Exception as e:
+        print(f"Health check failed: {str(e)}")
         return jsonify({"status": "fail", "message": f"Health check failed: {str(e)}"}), 503
 
-
-@app.route('/search', methods=['GET'])
-def search():
-    query = request.args.get('query')
-    if not query:
-        return jsonify({'error': 'Query parameter is required'}), 400
-
-    try:
-        search_results = ytmusic.search(query)
-        return jsonify(search_results)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-# Add missing endpoints for search suggestions, artist and album info
-@app.route('/search_suggestions', methods=['GET'])
-def search_suggestions():
-    query = request.args.get('query')
-    if not query:
-        return jsonify({'error': 'Query parameter is required'}), 400
-
-    try:
-        suggestions = ytmusic.search(query, filter='suggestions')
-        return jsonify(suggestions)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/get_artist', methods=['GET'])
-def get_artist():
-    artist_id = request.args.get('artistId')
-    if not artist_id:
-        return jsonify({'error': 'Artist ID parameter is required'}), 400
-
-    try:
-        artist_info = ytmusic.get_artist(artist_id)
-        return jsonify(artist_info)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/get_artist_albums', methods=['GET'])
-def get_artist_albums():
-    artist_id = request.args.get('artistId')
-    if not artist_id:
-        return jsonify({'error': 'Artist ID parameter is required'}), 400
-
-    try:
-        artist_albums = ytmusic.get_artist_albums(artist_id)
-        return jsonify(artist_albums)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/get_album', methods=['GET'])
-def get_album():
-    album_id = request.args.get('albumId')
-    if not album_id:
-        return jsonify({'error': 'Album ID parameter is required'}), 400
-
-    try:
-        album_info = ytmusic.get_album(album_id)
-        return jsonify(album_info)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/get_album_browse_id', methods=['GET'])
-def get_album_browse_id():
-    album_id = request.args.get('albumId')
-    if not album_id:
-        return jsonify({'error': 'Album ID parameter is required'}), 400
-
-    try:
-        browse_id = ytmusic.get_album_browse_id(album_id)
-        return jsonify({'browseId': browse_id})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/get_user', methods=['GET'])
-def get_user():
-    try:
-        user_info = ytmusic.get_user()
-        return jsonify(user_info)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/get_user_playlists', methods=['GET'])
-def get_user_playlists():
-    try:
-        playlists = ytmusic.get_library_playlists()
-        return jsonify(playlists)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/get_song', methods=['GET'])
-def get_song():
-    song_id = request.args.get('songId')
-    if not song_id:
-        return jsonify({'error': 'Song ID parameter is required'}), 400
-
-    try:
-        song_info = ytmusic.get_song(song_id)
-        return jsonify(song_info)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/get_song_related', methods=['GET'])
-def get_song_related():
-    video_id = request.args.get('videoId')
-    if not video_id:
-        return jsonify({'error': 'Video ID parameter is required'}), 400
-
-    try:
-        related_songs = ytmusic.get_related(videoId=video_id)
-        return jsonify(related_songs)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/get_lyrics', methods=['GET'])
-def get_lyrics():
-    video_id = request.args.get('videoId')
-    if not video_id:
-        return jsonify({'error': 'Video ID parameter is required'}), 400
-
-    try:
-        lyrics = ytmusic.get_lyrics(videoId=video_id)
-        return jsonify({'lyrics': lyrics})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
+# Start the Flask server
 if __name__ == '__main__':
+    print("Starting Flask server...")
     app.run(debug=True, host='0.0.0.0', port=5000)
