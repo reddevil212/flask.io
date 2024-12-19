@@ -4,8 +4,9 @@ import tempfile
 import requests
 from flask import Flask, jsonify, request
 from werkzeug.utils import secure_filename
+from flask_lambda import FlaskLambda
 
-app = Flask(__name__)
+app = FlaskLambda(__name__)
 
 # Configure a temporary directory for storing uploaded files
 TEMP_DIR = tempfile.mkdtemp()
@@ -66,8 +67,6 @@ def get_audio_url_from_json(video_url, cookies_file_path):
 @app.route('/get_audio', methods=['POST'])
 def get_audio():
     print("Received request to fetch audio.")
-
-    # Check if the content type is JSON or multipart/form-data
     if request.is_json:
         # Parse JSON data
         data = request.get_json()
@@ -75,17 +74,14 @@ def get_audio():
         cookies_url = data.get('cookies_url', None)
         print(f"Received video URLs from JSON: {video_urls}")
     else:
-        # Parse form data (multipart/form-data)
         video_urls = request.form.getlist('urls[]')
         cookies_url = request.form.get('cookies_url', None)
         print(f"Received video URLs from form: {video_urls}")
 
-    # Step 1: Validate that at least one URL is provided
     if not video_urls:
         print("Error: No YouTube URLs provided.")
         return jsonify({'error': 'No YouTube URLs provided'}), 400
 
-    # Step 2: Handling cookies - either from file upload, URL, or default URL
     cookies_file_path = None
     cookies_file = request.files.get('cookies.txt')
 
@@ -99,14 +95,12 @@ def get_audio():
         if isinstance(result, dict) and 'error' in result:
             return jsonify(result), 400
     else:
-        # If no cookies file or cookies URL is provided, use the default URL
         cookies_file_path = os.path.join(TEMP_DIR, 'cookies.txt')
         print(f"Using default cookies file URL: {DEFAULT_COOKIES_URL}")
         result = download_cookies_from_url(DEFAULT_COOKIES_URL, cookies_file_path)
         if isinstance(result, dict) and 'error' in result:
             return jsonify(result), 400
 
-    # Log the content of the cookies file if it exists
     if cookies_file_path:
         try:
             with open(cookies_file_path, 'r') as f:
@@ -115,7 +109,6 @@ def get_audio():
         except Exception as e:
             print(f"Error reading cookies file: {str(e)}")
 
-    # Step 3: Validate the YouTube URLs
     invalid_urls = []
     valid_urls = []
     
@@ -129,7 +122,6 @@ def get_audio():
         print(f"Error: Invalid YouTube URLs: {invalid_urls}")
         return jsonify({'error': 'Invalid YouTube URLs', 'invalid_urls': invalid_urls}), 400
 
-    # Step 4: Fetch the best audio URL for each valid URL
     urls_data = []
     for idx, video_url in enumerate(valid_urls, 1):
         try:
@@ -151,10 +143,8 @@ def get_audio():
                 'audio_url': f"Error: {str(e)}"
             })
 
-    # Return the results
     return jsonify({'urls': urls_data})
 
-# Health check endpoint to ensure the server is running
 @app.route('/', methods=['GET'])
 def health_check():
     try:
@@ -164,7 +154,3 @@ def health_check():
         print(f"Health check failed: {str(e)}")
         return jsonify({"status": "fail", "message": f"Health check failed: {str(e)}"}), 503
 
-# Start the Flask server
-if __name__ == '__main__':
-    print("Starting Flask server...")
-    app.run(debug=True, host='0.0.0.0', port=5000)

@@ -1,0 +1,11 @@
+[build]
+  functions = "api"  # This is where your serverless functions will reside
+
+[build.environment]
+  FLASK_ENV = "production"
+
+[[redirects]]
+  from = "/get_audio"
+  to = "/.netlify/functions/api/index/get_audio"
+  status = 200
+  force = true
