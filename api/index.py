@@ -62,28 +62,37 @@ def get_audio_url_from_json(video_url, cookies_file_path):
             print(f"Error during extraction: {str(e)}")  # Debugging output
             return None
 
-# Route to fetch the audio download URL
+# Route to fetch the audio download URL for multiple URLs
 @app.route('/get_audio', methods=['POST'])
 def get_audio():
     print("Received request to fetch audio.")
-    # Extracting the video URL and cookies file (or URL)
-    video_url = request.form.get('url')
-    cookies_file = request.files.get('cookies.txt')
-    cookies_url = request.form.get('cookies_url')
 
-    # Step 1: Validate the video URL
-    if not video_url:
-        print("Error: No video URL provided.")
-        return jsonify({'error': 'No video URL provided'}), 400
-    print(f"Received YouTube URL: {video_url}")
+    # Check if the content type is JSON or multipart/form-data
+    if request.is_json:
+        # Parse JSON data
+        data = request.get_json()
+        video_urls = data.get('urls', [])
+        cookies_url = data.get('cookies_url', None)
+        print(f"Received video URLs from JSON: {video_urls}")
+    else:
+        # Parse form data (multipart/form-data)
+        video_urls = request.form.getlist('urls[]')
+        cookies_url = request.form.get('cookies_url', None)
+        print(f"Received video URLs from form: {video_urls}")
+
+    # Step 1: Validate that at least one URL is provided
+    if not video_urls:
+        print("Error: No YouTube URLs provided.")
+        return jsonify({'error': 'No YouTube URLs provided'}), 400
 
     # Step 2: Handling cookies - either from file upload, URL, or default URL
     cookies_file_path = None
+    cookies_file = request.files.get('cookies.txt')
+
     if cookies_file:
         cookies_file_path = os.path.join(TEMP_DIR, secure_filename(cookies_file.filename))
         cookies_file.save(cookies_file_path)
         print(f"Successfully uploaded cookie file: {cookies_file.filename}")
-        print(f"Cookie file saved to: {cookies_file_path}")
     elif cookies_url:
         cookies_file_path = os.path.join(TEMP_DIR, 'cookies.txt')
         result = download_cookies_from_url(cookies_url, cookies_file_path)
@@ -106,24 +115,44 @@ def get_audio():
         except Exception as e:
             print(f"Error reading cookies file: {str(e)}")
 
-    # Step 3: Validate the YouTube URL
-    if not is_valid_youtube_url(video_url):
-        print(f"Error: Invalid YouTube URL: {video_url}")
-        return jsonify({'error': 'Invalid YouTube URL'}), 400
-
-    try:
-        # Step 4: Fetch the best audio URL
-        audio_url = get_audio_url_from_json(video_url, cookies_file_path)
-        
-        if audio_url:
-            print(f"Successfully fetched audio URL for video: {video_url}")
-            return jsonify({'audio_url': audio_url})  # Return the audio URL if found
+    # Step 3: Validate the YouTube URLs
+    invalid_urls = []
+    valid_urls = []
+    
+    for url in video_urls:
+        if not is_valid_youtube_url(url):
+            invalid_urls.append(url)
         else:
-            print(f"Error: Audio stream not found for video: {video_url}")
-            return jsonify({'error': 'Audio stream not found for this video'}), 404  # Error if no audio found
-    except Exception as e:
-        print(f"Error during audio URL extraction: {str(e)}")
-        return jsonify({'error': str(e)}), 500  # Return an error message for any exception
+            valid_urls.append(url)
+
+    if invalid_urls:
+        print(f"Error: Invalid YouTube URLs: {invalid_urls}")
+        return jsonify({'error': 'Invalid YouTube URLs', 'invalid_urls': invalid_urls}), 400
+
+    # Step 4: Fetch the best audio URL for each valid URL
+    urls_data = []
+    for idx, video_url in enumerate(valid_urls, 1):
+        try:
+            audio_url = get_audio_url_from_json(video_url, cookies_file_path)
+            if audio_url:
+                urls_data.append({
+                    'value': idx,
+                    'audio_url': audio_url
+                })
+            else:
+                urls_data.append({
+                    'value': idx,
+                    'audio_url': 'Audio stream not found'
+                })
+        except Exception as e:
+            print(f"Error during audio URL extraction for {video_url}: {str(e)}")
+            urls_data.append({
+                'value': idx,
+                'audio_url': f"Error: {str(e)}"
+            })
+
+    # Return the results
+    return jsonify({'urls': urls_data})
 
 # Health check endpoint to ensure the server is running
 @app.route('/', methods=['GET'])
